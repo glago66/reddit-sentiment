@@ -1,95 +1,163 @@
-import praw
 import json
 import os
+import zstandard as zstd
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Load credentials from .env file
-load_dotenv()
-
-# Connect to Reddit API
-reddit = praw.Reddit(
-    client_id=os.getenv("REDDIT_CLIENT_ID"),
-    client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-    user_agent=os.getenv("REDDIT_USER_AGENT")
-)
-
-# Subreddits to pull from
-SUBREDDITS = [
+# Subreddits we care about for music platform experience
+TARGET_SUBREDDITS = {
     "WeAreTheMusicMakers",
-    "makinghiphop",
+    "makinghiphop", 
     "edmproduction",
     "Music",
     "soundcloud"
-]
+}
 
-# Keywords to search for
+# Keywords to filter relevant posts
 KEYWORDS = [
     "soundcloud",
-    "streaming platform",
-    "music distribution",
-    "artist payout",
-    "playlist",
-    "music upload"
+    "streaming",
+    "platform",
+    "payout",
+    "upload",
+    "distribution",
+    "spotify",
+    "artist",
+    "listener",
+    "royalt",
+    "monetiz"
 ]
 
-def scrape_subreddit(subreddit_name, limit=100):
-    """Pull top posts and comments from a subreddit."""
-    print(f"Scraping r/{subreddit_name}...")
-    posts = []
+def is_relevant(text):
+    """Check if a comment contains any of our keywords."""
+    text_lower = text.lower()
+    return any(keyword in text_lower for keyword in KEYWORDS)
 
-    subreddit = reddit.subreddit(subreddit_name)
+def read_zst_file(filepath):
+    """Read a Pushshift .zst compressed file line by line."""
+    with open(filepath, "rb") as f:
+        dctx = zstd.ZstdDecompressor(max_window_size=2**31)
+        with dctx.stream_reader(f) as reader:
+            buffer = ""
+            while True:
+                chunk = reader.read(65536).decode("utf-8", errors="ignore")
+                if not chunk:
+                    break
+                buffer += chunk
+                lines = buffer.split("\n")
+                buffer = lines[-1]  # Keep incomplete line in buffer
+                for line in lines[:-1]:
+                    if line.strip():
+                        yield line
 
-    for post in subreddit.hot(limit=limit):
-        post_data = {
-            "id": post.id,
-            "subreddit": subreddit_name,
-            "title": post.title,
-            "selftext": post.selftext,
-            "score": post.score,
-            "num_comments": post.num_comments,
-            "created_utc": datetime.utcfromtimestamp(post.created_utc).isoformat(),
-            "url": post.url,
-            "comments": []
-        }
+def process_file(filepath):
+    """
+    Process a Pushshift .zst file and extract relevant comments.
+    
+    Pushshift files are organized by month and contain ALL subreddits.
+    We filter down to just our target subreddits and relevant keywords.
+    """
+    print(f"Processing {filepath}...")
+    results = []
+    total = 0
+    kept = 0
 
-        # Pull top comments for each post
-        post.comments.replace_more(limit=0)
-        for comment in post.comments.list()[:20]:
-            post_data["comments"].append({
-                "id": comment.id,
-                "body": comment.body,
-                "score": comment.score,
-                "created_utc": datetime.utcfromtimestamp(comment.created_utc).isoformat()
-            })
+    for line in read_zst_file(filepath):
+        try:
+            data = json.loads(line)
+            total += 1
 
-        posts.append(post_data)
+            # Filter by subreddit
+            subreddit = data.get("subreddit", "")
+            if subreddit not in TARGET_SUBREDDITS:
+                continue
 
-    return posts
+            # Get the text content
+            body = data.get("body", data.get("selftext", ""))
+            title = data.get("title", "")
+            full_text = f"{title} {body}".strip()
 
-def save_raw_data(data, subreddit_name):
-    """Save raw data to data/raw/ folder."""
-    os.makedirs("data/raw", exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"data/raw/{subreddit_name}_{timestamp}.json"
+            # Filter by keyword relevance
+            if not is_relevant(full_text):
+                continue
 
-    with open(filename, "w", encoding="utf-8") as f:
+            # Build clean record
+            record = {
+                "id": data.get("id", ""),
+                "subreddit": subreddit,
+                "author": data.get("author", ""),
+                "title": title,
+                "body": body,
+                "score": data.get("score", 0),
+                "created_utc": datetime.utcfromtimestamp(
+                    data.get("created_utc", 0)
+                ).isoformat(),
+                "type": "comment" if "body" in data else "post"
+            }
+
+            results.append(record)
+            kept += 1
+
+            # Progress update every 100k records
+            if total % 100000 == 0:
+                print(f"  Scanned {total:,} records, kept {kept:,}...")
+
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+    print(f"  Done. Kept {kept:,} relevant records from {total:,} total.")
+    return results
+
+def save_results(data, output_filename):
+    """Save filtered results to data/cleaned/ folder."""
+    os.makedirs("data/cleaned", exist_ok=True)
+    filepath = f"data/cleaned/{output_filename}"
+
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-    print(f"Saved {len(data)} posts to {filename}")
+    print(f"Saved {len(data):,} records to {filepath}")
 
 def main():
-    all_data = []
+    """
+    Main entry point.
+    
+    Place your downloaded Pushshift .zst files in data/raw/
+    then run this script to filter and clean them.
+    
+    Download files from:
+    https://huggingface.co/datasets/fddemarco/pushshift-reddit-comments
+    """
+    raw_dir = "data/raw"
+    
+    # Check if any files exist
+    if not os.path.exists(raw_dir):
+        print("ERROR: data/raw/ folder not found.")
+        return
 
-    for subreddit in SUBREDDITS:
-        try:
-            posts = scrape_subreddit(subreddit, limit=100)
-            save_raw_data(posts, subreddit)
-            all_data.extend(posts)
-        except Exception as e:
-            print(f"Error scraping r/{subreddit}: {e}")
+    zst_files = [f for f in os.listdir(raw_dir) if f.endswith(".zst")]
 
-    print(f"\nDone! Total posts collected: {len(all_data)}")
+    if not zst_files:
+        print("No .zst files found in data/raw/")
+        print("Download Pushshift files from:")
+        print("https://huggingface.co/datasets/fddemarco/pushshift-reddit-comments")
+        return
+
+    all_results = []
+
+    for filename in zst_files:
+        filepath = os.path.join(raw_dir, filename)
+        results = process_file(filepath)
+        
+        # Save each file's results separately
+        output_name = filename.replace(".zst", "_filtered.json")
+        save_results(results, output_name)
+        all_results.extend(results)
+
+    # Save combined output
+    if all_results:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_results(all_results, f"all_filtered_{timestamp}.json")
+        print(f"\nDone! Total records collected: {len(all_results):,}")
 
 if __name__ == "__main__":
     main()
