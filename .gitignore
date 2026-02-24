@@ -1,0 +1,19 @@
+# Data files - don't upload raw data to GitHub
+data/raw/
+data/cleaned/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Conda/pip
+*.egg-info/
+
+# DuckDB database file
+*.duckdb
+
+# Credentials - NEVER upload these
+credentials.json
+secrets.py
+.env
