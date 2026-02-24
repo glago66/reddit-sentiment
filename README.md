@@ -1,4 +1,3 @@
-
 # Reddit Sentiment Analysis — Platform Experience for Artists & Listeners
 
 An end-to-end analytics engineering project built to demonstrate production-grade data pipeline skills — ingesting Reddit discussions, scoring sentiment, and surfacing prioritized platform insights through an automated Airflow pipeline and Streamlit dashboard.
@@ -7,9 +6,29 @@ An end-to-end analytics engineering project built to demonstrate production-grad
 
 ---
 
+## Engineering Decisions & Methodology Notes
+
+### Data Source: Pushshift vs Reddit API
+
+**Original approach:** The project was designed to use the Reddit API (PRAW) for live data ingestion.
+
+**What happened:** As of November 2024, Reddit closed self-service API access. New applications require manual approval through Reddit's Responsible Builder Policy, and approvals for non-commercial personal projects are effectively not being granted.
+
+**Decision:** Switched to [Pushshift](https://huggingface.co/datasets/fddemarco/pushshift-reddit-comments), a publicly available archive of historical Reddit data collected since 2015. This is the same dataset used in over 100 peer-reviewed academic research papers.
+
+**Why this is actually better for this project:**
+- No API rate limits — access to years of historical data vs the Reddit API's 1000 post limit
+- Richer dataset for trend analysis over time
+- No credentials required — fully reproducible by anyone who clones this repo
+- The ingest script is designed to be swapped back to live API if access is ever granted
+
+**What this demonstrates:** Real-world data engineering requires adapting to infrastructure constraints. The pipeline architecture (ingest → clean → transform → load → visualize) remains identical regardless of data source.
+
+---
+
 ## What This Project Does
 
-1. **Ingests** Reddit comments and posts via the official Reddit API (PRAW) across artist- and listener-focused subreddits
+1. **Ingests** Reddit comments and posts from Pushshift archives — a publicly available dataset of historical Reddit data collected since 2015, covering artist- and listener-focused subreddits
 2. **Cleans & transforms** raw text data using pandas and NLTK
 3. **Scores sentiment** at the comment level using TextBlob (positive / negative / neutral)
 4. **Stores** structured data locally using DuckDB with SQL models designed to be portable to BigQuery in production
@@ -22,9 +41,9 @@ An end-to-end analytics engineering project built to demonstrate production-grad
 
 | Skill | How It's Used |
 |---|---|
-| **Apache Airflow** | DAG schedules Reddit ingestion, transformation, and sentiment scoring |
+| **Apache Airflow** | DAG schedules ingestion, transformation, and sentiment scoring |
 | **SQL & DuckDB** | Structured data models, aggregations, and issue prioritization queries |
-| **Python & NLP** | PRAW API ingestion, NLTK preprocessing, TextBlob sentiment scoring |
+| **Python & NLP** | Pushshift data ingestion, NLTK preprocessing, TextBlob sentiment scoring |
 | **Streamlit** | Interactive dashboard with filters by subreddit, date, and sentiment |
 | **ETL/ELT Design** | Raw → cleaned → aggregated data layers with clear separation |
 | **Git & GitHub** | Version controlled, documented, and publicly reproducible |
@@ -32,16 +51,16 @@ An end-to-end analytics engineering project built to demonstrate production-grad
 ---
 
 ## Project Structure
+
 ```
 reddit-sentiment/
 ├── dags/               # Airflow DAGs for pipeline orchestration
 ├── data/
-│   ├── raw/            # Raw JSON from Reddit API (gitignored)
+│   ├── raw/            # Raw Pushshift .zst files (gitignored)
 │   └── cleaned/        # Transformed, analysis-ready data (gitignored)
 ├── dashboards/         # Streamlit dashboard app
 ├── notebooks/          # Exploratory analysis and prototyping
 ├── scripts/            # Ingestion, cleaning, and sentiment scoring scripts
-├── .env                # API credentials (gitignored — never committed)
 ├── .gitignore
 └── README.md
 ```
@@ -51,7 +70,7 @@ reddit-sentiment/
 ## Tech Stack
 
 - **Python 3.11**
-- **PRAW** — Reddit API client
+- **Pushshift** — open Reddit data archive (historical comment and post data)
 - **pandas** — data wrangling
 - **NLTK + TextBlob** — NLP and sentiment analysis
 - **DuckDB** — local SQL database (designed to migrate to BigQuery in production)
@@ -64,42 +83,40 @@ reddit-sentiment/
 ## How to Run Locally
 
 ### 1. Clone the repo
-```
+```bash
 git clone https://github.com/glago66/reddit-sentiment.git
 cd reddit-sentiment
 ```
 
 ### 2. Create and activate the conda environment
-```
+```bash
 conda create -n reddit-sentiment python=3.11 -y
 conda activate reddit-sentiment
 pip install -r requirements.txt
 ```
 
-### 3. Add your Reddit API credentials
-Create a `.env` file in the root directory:
-```
-REDDIT_CLIENT_ID=your_client_id
-REDDIT_CLIENT_SECRET=your_client_secret
-REDDIT_USER_AGENT=reddit-sentiment-project
-```
-To get credentials, register a free app at https://www.reddit.com/prefs/apps
+### 3. Download Pushshift data
+Download monthly Reddit comment archives from:
+https://huggingface.co/datasets/fddemarco/pushshift-reddit-comments
+
+Place `.zst` files in `data/raw/` and run the ingestion script.
 
 ### 4. Run the ingestion script
-```
+```bash
 python scripts/ingest.py
 ```
 
 ### 5. Launch the dashboard
-```
+```bash
 streamlit run dashboards/app.py
 ```
 
 ---
 
 ## Architecture
+
 ```
-Reddit API (PRAW)
+Pushshift Archive (.zst files)
       │
       ▼
  Raw JSON (data/raw/)
@@ -127,6 +144,6 @@ Reddit API (PRAW)
 
 ## Author
 
-Gloria L. — https://github.com/glago66
+Gloria L. — [github.com/glago66](https://github.com/glago66)
 
 Analytics engineering portfolio project. Open to feedback and contributions.
