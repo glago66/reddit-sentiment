@@ -1,0 +1,74 @@
+Column_Name,Description
+_meta,"Metadata dict (retrieval info, etc)"
+all_awardings,List of all awards on comment
+approved_at_utc,When moderator approved it
+approved_by,Username of approving moderator
+archived,Whether comment is archived (bool)
+associated_award,Associated award info
+author,Username who posted the comment
+author_flair_background_color,Flair background color
+author_flair_css_class,CSS class for flair styling
+author_flair_richtext,Rich text components of flair
+author_flair_template_id,Template ID for flair
+author_flair_text,Author's flair text/badge
+author_flair_text_color,Flair text color
+author_flair_type,"Type of flair (text, richtext)"
+author_fullname,Full ID of author (t2_ prefix)
+author_is_blocked,Whether author is blocked by you (bool)
+author_patreon_flair,Patreon-related flair
+author_premium,Whether author has Reddit Premium (bool)
+awarders,List of users who awarded
+banned_at_utc,When banned by moderator
+banned_by,Username of banning moderator
+body,Text content of the comment
+can_gild,Whether you can award gold (bool)
+can_mod_post,Whether you can moderate this (bool)
+collapsed,Whether comment is collapsed (bool)
+collapsed_because_crowd_control,Collapsed due to crowd control
+collapsed_reason,Reason comment was collapsed
+collapsed_reason_code,Code for collapse reason
+comment_type,Type of comment
+controversiality,Binary flag (0 or 1) for controversial comments
+created,Comment creation timestamp (Unix epoch)
+created_utc,Comment creation timestamp UTC (Unix epoch)
+distinguished,"Distinguishment level (None, moderator, admin, special)"
+downs,Number of downvotes
+edited,Edit timestamp or False if not edited
+gilded,Number of gold awards given
+gildings,Dictionary of gilding types and counts
+id,Unique comment ID
+is_submitter,Whether author is submission author (bool)
+likes,"Your vote (1 = upvoted, -1 = downvoted, None = no vote)"
+link_id,ID of the submission this comment belongs to
+locked,Whether comment thread is locked (bool)
+mod_note,Moderator notes on comment
+mod_reason_by,Moderator who took action
+mod_reason_title,Mod action reason title
+mod_reports,List of moderator reports
+name,Full ID (prefixed with t1_)
+no_follow,Whether to apply nofollow (bool)
+num_reports,Number of reports
+parent_id,ID of parent comment or submission
+permalink,URL path to the comment
+removal_reason,Reason for removal if applicable
+replies,Nested replies (usually empty string in flat exports)
+report_reasons,List of report reasons
+retrieved_on,When this data was retrieved
+saved,Whether user saved it (bool)
+score,Net score (upvotes - downvotes)
+score_hidden,Whether score is hidden (bool)
+send_replies,Whether author wants reply notifications (bool)
+stickied,Whether comment is pinned by mod (bool)
+subreddit,Subreddit name (without r/)
+subreddit_id,Full ID of subreddit (t5_ prefix)
+subreddit_name_prefixed,Subreddit name with r/ prefix
+subreddit_type,"Type of subreddit (public, private, restricted)"
+top_awarded_type,Type of top award
+total_awards_received,Total number of awards
+treatment_tags,Special treatment tags
+unrepliable_reason,Reason replying is disabled
+ups,Number of upvotes
+user_reports,List of user reports
+media_metadata,Metadata about embedded media
+author_cakeday,Author's cake day (anniversary of account creation)
+editable,Whether comment is editable

@@ -17,3 +17,6 @@ __pycache__/
 credentials.json
 secrets.py
 .env
+
+# Jupyter
+.ipynb_checkpoints/
